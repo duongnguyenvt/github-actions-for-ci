@@ -1,0 +1,11 @@
+name: demo
+on:
+  pull_request:
+    types: [closed]
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == 'true'
+    steps:
+      - name: step1
+        run: echo 'pull request was merged'
