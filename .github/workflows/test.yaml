@@ -1,11 +1,49 @@
-name: demo
-on:
-  pull_request:
-    types: [closed]
+name: Point Service
+on: [pull_request]
+  # pull_request: 
+    # branches:
+    #   - develop
+    # types:
+    #   - closed
+permissions:
+  contents: read
+  pull-requests: read
 jobs:
-  job1:
+  golangci:
+    name: runner / golangci-lint
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == 'true'
     steps:
-      - name: step1
-        run: echo 'pull request was merged -1 13123'
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+      - uses: actions/checkout@v3
+      - uses: golangci/golangci-lint-action@v3
+
+  build:
+    name: Build Image 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+            -
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to private registry
+        uses: docker/login-action@v1
+        with: 
+          registry: ${{ secrets.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        # if: github.event.pull_request.merged == true && github.head_ref == 'develop'
+        with:
+          context: ./docker/
+          file: ./docker/Dockerfile.server
+          builder: ${{ steps.buildx.outputs.name }}
+          push: true
+          tags: '${{ secrets.REGISTRY_URL }}/point-service:latest'
+          cache-from: 'type=registry,ref=${{ secrets.REGISTRY_URL }}/point-service:buildcache'
+          cache-to: 'type=registry,ref=${{ secrets.REGISTRY_URL }}/point-service:buildcache,mode=max'
